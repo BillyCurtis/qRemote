@@ -319,6 +319,7 @@
     "portOptional": "Порт (необязательно)",
     "username": "Имя пользователя",
     "password": "Пароль",
+    "apiKey": "API Key",
     "trackerUrl": "https://tracker.example.com/announce",
     "enterKbs": "КБ/с"
   },
@@ -381,6 +382,8 @@
   "server": {
     "serverInfo": "СЕРВЕР",
     "authentication": "АВТОРИЗАЦИЯ",
+    "useApiKey": "Use API Key",
+    "useApiKeyHint": "qBittorrent 5.2+",
     "security": "БЕЗОПАСНОСТЬ",
     "useHttps": "Использовать HTTPS",
     "bypassAuth": "Без авторизации",

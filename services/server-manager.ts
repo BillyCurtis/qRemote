@@ -77,6 +77,22 @@ export class ServerManager {
       clogInfo('CONN', `Connecting to ${server.host}:${server.port || 'default'} (bypassAuth=${server.bypassAuth})`);
       // Set server in API client
       apiClient.setServer(server);
+      
+      // API key auth — no login needed, just verify the connection
+      if (server.apiKey) {
+        try {
+          await applicationApi.getVersion();
+          await storageService.setCurrentServerId(server.id);
+          clogInfo('CONN', 'Connected successfully (API key)');
+          return true;
+        } catch (error: unknown) {
+          apiClient.setServer(null);
+          const message = error instanceof Error ? error.message : String(error);
+          clogError('CONN', `API key connect failed: ${message}`);
+          if (isNetworkError(error)) throw error;
+          throw new Error('Failed to connect to server. Please check your API key.');
+        }
+      }
 
       // Skip authentication if bypassAuth is enabled
       if (server.bypassAuth) {
@@ -185,11 +201,14 @@ export class ServerManager {
 
       try {
         if (!server.bypassAuth) {
-          // Attempt login with abort signal
-          const loginResult = await authApi.login(server.username, server.password, signal);
-          if (loginResult.status !== 'Ok') {
-            clogWarn('CONN', 'testConnection: auth failed');
-            return { success: false, error: 'Authentication failed. Please check your username and password.' };
+          // Skip login if using API key
+          if (!server.apiKey) {
+            // Attempt login with abort signal
+            const loginResult = await authApi.login(server.username, server.password, signal);
+            if (loginResult.status !== 'Ok') {
+              clogWarn('CONN', 'testConnection: auth failed');
+              return { success: false, error: 'Authentication failed. Please check your username and password.' };
+            }
           }
         }
 

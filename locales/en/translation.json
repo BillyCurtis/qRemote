@@ -341,6 +341,7 @@
     "portOptional": "Port (optional)",
     "username": "Username",
     "password": "Password",
+    "apiKey": "API Key",
     "trackerUrl": "https://tracker.example.com/announce",
     "enterKbs": "Enter KB/s"
   },
@@ -403,6 +404,8 @@
   "server": {
     "serverInfo": "SERVER INFO",
     "authentication": "AUTHENTICATION",
+    "useApiKey": "Use API Key",
+    "useApiKeyHint": "qBittorrent 5.2+",
     "security": "SECURITY",
     "useHttps": "Use HTTPS",
     "bypassAuth": "Bypass Authentication",
@@ -682,6 +685,7 @@
     "connectionFailedManual": "Connection failed: {{error}}. Please try connecting manually.",
     "fillNameAndHost": "Please fill in server name and host",
     "fillUsernamePassword": "Please fill in username and password, or enable bypass authentication",
+    "fillApiKey": "Please fill in API key, or enable bypass authentication",
     "validPort": "Please enter a valid port number (1-65535)",
     "selectTorrentFile": "Please select a .torrent file",
     "enterUrlOrMagnet": "Please enter a URL/magnet link or select a .torrent file",

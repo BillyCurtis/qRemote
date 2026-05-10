@@ -10,6 +10,7 @@ import { clogDebug, clogInfo, clogWarn, clogError } from '@/services/connectivit
 class ApiClient {
   private client: AxiosInstance;
   private currentServer: ServerConfig | null = null;
+  private apiKey: string = '';
   private cookies: string = '';
   private retryAttempts: number = 3;
 
@@ -55,11 +56,13 @@ class ApiClient {
         
         clogDebug('HTTP', `${config.method?.toUpperCase() || 'REQ'} ${config.baseURL}${config.url || ''}`);
         
-        // Add cookies if available
-        if (this.cookies) {
+        // API key takes priority over session cookies
+        if (this.apiKey) {
+          config.headers['Authorization'] = `Bearer ${this.apiKey}`;
+        } else if (this.cookies) {
           config.headers.Cookie = this.cookies;
         }
-        
+
         // Add Referer header for qBittorrent 5.x compatibility
         config.headers.Referer = config.baseURL + '/';
         
@@ -114,6 +117,13 @@ class ApiClient {
         const status = error.response?.status;
 
         // Handle authentication errors
+        if (status === 401) {
+          this.cookies = '';
+          this.apiKey = '';
+          clogError('HTTP', `401 Unauthorized — ${reqUrl}`);
+          throw new Error('Authentication failed. Please check your credentials.');
+        }
+
         if (status === 403) {
           this.cookies = '';
           clogError('HTTP', `403 Forbidden — ${reqUrl}`);
@@ -174,6 +184,7 @@ class ApiClient {
       this.cookies = '';
     }
     this.currentServer = server;
+    this.apiKey = server?.apiKey ?? '';
     if (server) {
       clogInfo('HTTP', `API client set to ${server.host}:${server.port || 'default'}`);
     } else {
@@ -199,10 +210,12 @@ class ApiClient {
     }
 
     const headers = new AxiosHeaders({ 'Content-Type': 'multipart/form-data' });
-    if (this.cookies) {
+    if (this.apiKey) {
+      headers.set('Authorization', `Bearer ${this.apiKey}`);
+    } else if (this.cookies) {
       headers.set('Cookie', this.cookies);
     }
-
+    
     const response = await this.client.post(url, data, { headers });
     return response.data;
   }
@@ -280,4 +293,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
-

@@ -46,6 +46,8 @@ export default function AddServerScreen() {
   const [port, setPort] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [useApiKey, setUseApiKey] = useState(false);
   const [useHttps, setUseHttps] = useState(false);
   const [bypassAuth, setBypassAuth] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -116,8 +118,11 @@ export default function AddServerScreen() {
     }
     
     // Missing credentials
-    if (!bypassAuth && (!username.trim() || !password.trim())) {
+    if (!bypassAuth && !useApiKey && (!username.trim() || !password.trim())) {
       warnings.push({ type: 'error', message: "Username and password required (or enable Bypass Authentication)." });
+    }
+    if (!bypassAuth && useApiKey && !apiKey.trim()) {
+      warnings.push({ type: 'error', message: "API Key required (or enable Bypass Authentication)." });
     }
     
     return {
@@ -135,7 +140,7 @@ export default function AddServerScreen() {
       hasErrors: warnings.some(w => w.type === 'error'),
       hasWarnings: warnings.some(w => w.type === 'warning'),
     };
-  }, [host, port, useHttps, bypassAuth, username, password]);
+  }, [host, port, useHttps, bypassAuth, username, password, apiKey, useApiKey]);
 
   // Copy debug info to clipboard
   const copyDebugInfo = async () => {
@@ -146,6 +151,7 @@ Host: ${debugInfo.cleanHost || '(empty)'}
 Port: ${debugInfo.portNum || 'default (80/443)'}
 HTTPS: ${useHttps ? 'Yes' : 'No'}
 Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}
+API Key: ${useApiKey ? 'Yes' : 'No'}
 
 Login Endpoint: ${debugInfo.loginEndpoint}
 Version Endpoint: ${debugInfo.versionEndpoint}
@@ -176,8 +182,12 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
-    if (!bypassAuth && (!username.trim() || !password.trim())) {
+    if (!bypassAuth && !useApiKey && (!username.trim() || !password.trim())) {
       showToast(t('errors.fillUsernamePassword'), 'error');
+      return;
+    }
+    if (!bypassAuth && useApiKey && !apiKey.trim()) {
+      showToast(t('errors.fillApiKey'), 'error');
       return;
     }
 
@@ -200,8 +210,10 @@ App Version: ${APP_VERSION}`;
         host: stripProtocol(host.trim()),
         port: portNum,
         basePath: '/',
-        username: bypassAuth ? '' : username.trim(),
-        password: bypassAuth ? '' : password.trim(),
+        username: bypassAuth || useApiKey ? '' : username.trim(),
+        password: bypassAuth || useApiKey ? '' : password.trim(),
+        apiKey: bypassAuth || !useApiKey ? '' : apiKey.trim(),
+        useApiKey,
         useHttps,
         bypassAuth,
       };
@@ -235,8 +247,12 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
-    if (!bypassAuth && (!username.trim() || !password.trim())) {
+    if (!bypassAuth && !useApiKey && (!username.trim() || !password.trim())) {
       showToast(t('errors.fillUsernamePassword'), 'error');
+      return;
+    }
+    if (!bypassAuth && useApiKey && !apiKey.trim()) {
+      showToast(t('errors.fillApiKey'), 'error');
       return;
     }
 
@@ -255,8 +271,10 @@ App Version: ${APP_VERSION}`;
         name: name.trim(),
         host: stripProtocol(host.trim()),
         port: portNum,
-        username: bypassAuth ? '' : username.trim(),
-        password: bypassAuth ? '' : password.trim(),
+        username: bypassAuth || useApiKey ? '' : username.trim(),
+        password: bypassAuth || useApiKey ? '' : password.trim(),
+        apiKey: bypassAuth || !useApiKey ? '' : apiKey.trim(),
+        useApiKey,
         useHttps,
         bypassAuth,
       };
@@ -381,43 +399,80 @@ App Version: ${APP_VERSION}`;
 
           {/* Authentication Section */}
           {!bypassAuth && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.authentication')}</Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
-                <View style={styles.inputRow}>
-                  <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholder={t('placeholders.username')}
-                  placeholderTextColor={colors.textSecondary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="none"
-                  autoComplete="off"
-                />
-                </View>
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                <View style={styles.inputRow}>
-                  <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder={t('placeholders.password')}
-                  placeholderTextColor={colors.textSecondary}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="password"
-                  autoComplete="off"
-                  passwordRules=""
-                />
-                </View>
-              </View>
-            </View>
-          )}
+           <View style={styles.section}>
+             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.authentication')}</Text>
+             <View style={[styles.card, { backgroundColor: colors.surface }]}>
+               <View style={styles.settingRow}>
+                 <View style={styles.settingLeft}>
+                   <Ionicons name="key-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                   <View>
+                     <Text style={[styles.settingLabel, { color: colors.text }]}>{t('server.useApiKey')}</Text>
+                     <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('server.useApiKeyHint')}</Text>
+                   </View>
+                 </View>
+                 <Switch
+                   value={useApiKey}
+                   onValueChange={setUseApiKey}
+                   trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                   thumbColor="#FFFFFF"
+                 />
+               </View>
+               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+               {useApiKey ? (
+                 <View style={styles.inputRow}>
+                   <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                   <TextInput
+                     style={[styles.input, { color: colors.text }]}
+                     value={apiKey}
+                     onChangeText={setApiKey}
+                     placeholder={t('placeholders.apiKey')}
+                     placeholderTextColor={colors.textSecondary}
+                     secureTextEntry
+                     autoCapitalize="none"
+                     autoCorrect={false}
+                     textContentType="password"
+                     autoComplete="off"
+                     passwordRules=""
+                   />
+                 </View>
+               ) : (
+                 <>
+                   <View style={styles.inputRow}>
+                     <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                     <TextInput
+                       style={[styles.input, { color: colors.text }]}
+                       value={username}
+                       onChangeText={setUsername}
+                       placeholder={t('placeholders.username')}
+                       placeholderTextColor={colors.textSecondary}
+                       autoCapitalize="none"
+                       autoCorrect={false}
+                       textContentType="none"
+                       autoComplete="off"
+                     />
+                   </View>
+                   <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                   <View style={styles.inputRow}>
+                     <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                     <TextInput
+                       style={[styles.input, { color: colors.text }]}
+                       value={password}
+                       onChangeText={setPassword}
+                       placeholder={t('placeholders.password')}
+                       placeholderTextColor={colors.textSecondary}
+                       secureTextEntry
+                       autoCapitalize="none"
+                       autoCorrect={false}
+                       textContentType="password"
+                       autoComplete="off"
+                       passwordRules=""
+                     />
+                   </View>
+                 </>
+               )}
+             </View>
+           </View>
+         )}
 
           {/* Security Section */}
           <View style={styles.section}>
@@ -598,6 +653,8 @@ App Version: ${APP_VERSION}`;
                 useHttps={useHttps}
                 username={username}
                 password={password}
+                apiKey={apiKey}
+                useApiKey={useApiKey}
                 bypassAuth={bypassAuth}
               />
             </View>

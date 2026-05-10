@@ -39,6 +39,8 @@ export const storageService = {
         basePath: s.basePath || '/',
         username: s.username,
         password: '', // Don't store password in AsyncStorage
+        apiKey: '', // Don't store apiKey in AsyncStorage
+        useApiKey: s.useApiKey || false,
         useHttps: s.useHttps || false,
         bypassAuth: s.bypassAuth || false,
       }));
@@ -47,6 +49,7 @@ export const storageService = {
       
       // Store password securely
       await SecureStore.setItemAsync(`server_password_${server.id}`, server.password);
+      await SecureStore.setItemAsync(`server_apikey_${server.id}`, server.apiKey);
     } catch (error) {
       throw error;
     }
@@ -66,7 +69,8 @@ export const storageService = {
       const serversWithPasswords = await Promise.all(
         servers.map(async (server) => {
           const password = await SecureStore.getItemAsync(`server_password_${server.id}`) || '';
-          return { ...server, password, host: stripProtocol(server.host || '') };
+          const apiKey = await SecureStore.getItemAsync(`server_apikey_${server.id}`) || '';
+          return { ...server, password, apiKey, host: stripProtocol(server.host || '') };
         })
       );
 
@@ -95,6 +99,7 @@ export const storageService = {
     
     // Remove password from SecureStore
     await SecureStore.deleteItemAsync(`server_password_${id}`);
+    await SecureStore.deleteItemAsync(`server_apikey_${id}`);
     
     // If this was the current server, clear it
     const currentId = await this.getCurrentServerId();

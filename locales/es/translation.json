@@ -321,6 +321,7 @@
     "portOptional": "Puerto (opcional)",
     "username": "Usuario",
     "password": "Contraseña",
+    "apiKey": "API Key",
     "trackerUrl": "https://tracker.example.com/announce",
     "enterKbs": "Introducir KB/s"
   },
@@ -383,6 +384,8 @@
   "server": {
     "serverInfo": "INFO DEL SERVIDOR",
     "authentication": "AUTENTICACIÓN",
+    "useApiKey": "Use API Key",
+    "useApiKeyHint": "qBittorrent 5.2+",
     "security": "SEGURIDAD",
     "useHttps": "Usar HTTPS",
     "bypassAuth": "Omitir autenticación",

@@ -321,6 +321,7 @@
     "portOptional": "端口（可选）",
     "username": "用户名",
     "password": "密码",
+    "apiKey": "API Key",
     "trackerUrl": "https://tracker.example.com/announce",
     "enterKbs": "输入 KB/s"
   },
@@ -383,6 +384,8 @@
   "server": {
     "serverInfo": "服务器信息",
     "authentication": "认证",
+    "useApiKey": "Use API Key",
+    "useApiKeyHint": "qBittorrent 5.2+",
     "security": "安全",
     "useHttps": "使用 HTTPS",
     "bypassAuth": "绕过认证",

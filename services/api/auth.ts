@@ -30,11 +30,11 @@ export const authApi = {
 
       clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`);
       
-      // qBittorrent returns 'Ok.' on success, 'Fails.' on failure
+      // qBittorrent ≤5.1 returns 'Ok.' on success, 'Fails.' on failure; ≥5.2 returns HTTP 204 on success, 401 on failure
       // Handle both string and trimmed string responses
       const responseStr = typeof response === 'string' ? response.trim() : String(response).trim();
       
-      if (responseStr === 'Ok.' || responseStr === 'Ok') {
+      if (responseStr === 'Ok.' || responseStr === 'Ok' || responseStr === '') {
         // Successful login - verify we have session cookies
         if (!cookies || cookies.length === 0) {
           console.warn('[Auth] Warning: Login succeeded but no cookies received. This may cause issues with qBittorrent 5.x');
@@ -43,7 +43,7 @@ export const authApi = {
         clogInfo('AUTH', 'Login successful');
         return { status: 'Ok' };
       }
-      
+
       console.warn('[Auth] Login failed with response:', responseStr);
       clogWarn('AUTH', `Login failed — server responded: "${responseStr}"`);
       return { status: 'Fails' };
@@ -65,8 +65,8 @@ export const authApi = {
         throw error;
       }
       
-      if (axiosErr?.response?.status === 403) {
-        throw new Error('Authentication failed. Please check your username and password.');
+      if (axiosErr?.response?.status === 403 || axiosErr?.response?.status === 401) {
+         throw new Error('Authentication failed. Please check your username and password.');
       }
       
       return { status: 'Fails' };

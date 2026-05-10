@@ -86,6 +86,7 @@ export default function AdvancedSettingsScreen() {
           port: s.port,
           basePath: s.basePath,
           username: s.username,
+          useApiKey: s.useApiKey,
           useHttps: s.useHttps,
           bypassAuth: s.bypassAuth,
         })),

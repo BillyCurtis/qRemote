@@ -15,6 +15,8 @@ export interface ServerConfig {
   basePath?: string;
   username: string;
   password: string;
+  apiKey: string; // qBittorrent 5.2.0+ Bearer token auth
+  useApiKey: boolean;
   useHttps?: boolean;
   bypassAuth?: boolean; // Skip authentication when local network auth is disabled
 }

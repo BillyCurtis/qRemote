@@ -38,6 +38,8 @@ export interface SuperDebugPanelProps {
   useHttps: boolean;
   username: string;
   password: string;
+  apiKey: string;
+  useApiKey: boolean;
   bypassAuth: boolean;
 }
 
@@ -63,6 +65,8 @@ export function SuperDebugPanel({
   useHttps,
   username,
   password,
+  apiKey,
+  useApiKey,
   bypassAuth,
 }: SuperDebugPanelProps) {
   const { colors } = useTheme();
@@ -226,8 +230,8 @@ export function SuperDebugPanel({
       addEntry('ERROR', 'Host field is empty. Enter an IP or domain above first.', 'error');
       return;
     }
-    if (!bypassAuth && (!username.trim() || !password.trim())) {
-      addEntry('ERROR', 'Username and password are required. Fill them in above, or enable "Bypass Authentication".', 'error');
+    if (!bypassAuth && !apiKey.trim() && (!username.trim() || !password.trim())) {
+      addEntry('ERROR', 'Username and password or API Key are required. Fill them in above, or enable "Bypass Authentication".', 'error');
       return;
     }
 
@@ -247,10 +251,10 @@ export function SuperDebugPanel({
     addEntry('INFO', `Target: ${baseUrl}`, 'info');
     addEntry('INFO', `Platform: ${Platform.OS} ${Platform.Version}`, 'info');
     addEntry('INFO', `App: ${APP_VERSION}`, 'info');
-    addEntry('INFO', `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`, 'info');
+    addEntry('INFO', `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'} | API Key: ${useApiKey ? 'Yes' : 'No'}`, 'info');
 
     let passed = 0;
-    const totalSteps = bypassAuth ? 2 : 4;
+    const totalSteps = bypassAuth || apiKey.trim() ? 2 : 4;
     let sidCookie = '';
 
     try {
@@ -295,6 +299,10 @@ export function SuperDebugPanel({
 
       if (bypassAuth) {
         addEntry('INFO', 'Steps 2-3 skipped (auth bypass enabled).', 'info');
+      } else if (apiKey.trim()) {
+        addEntry('INFO', 'Steps 2-3 skipped (API key auth — no login needed).', 'info');
+        // Set Bearer token for Step 4
+        sidCookie = ''; // not used but clear it
       } else {
         // -- Step 2: Login ----------------------------------------------------
         addEntry('LOGIN', 'Step 2 — Can the app log in?', 'info');
@@ -312,7 +320,7 @@ export function SuperDebugPanel({
           const loginBody = await loginResp.text();
           const bodyTrimmed = loginBody.trim();
 
-          if (bodyTrimmed === 'Ok.' || bodyTrimmed === 'Ok') {
+          if (bodyTrimmed === 'Ok.' || bodyTrimmed === 'Ok' || bodyTrimmed === '' || loginResp.status === 204) {
             addEntry('LOGIN', `Login successful — "${bodyTrimmed}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'success');
           } else if (bodyTrimmed === 'Fails.' || bodyTrimmed === 'Fails') {
             addEntry('LOGIN', `Login REJECTED — "${bodyTrimmed}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'error');
@@ -349,13 +357,15 @@ export function SuperDebugPanel({
             loginResp.headers.get('SET-COOKIE');
 
           if (setCookieHeader) {
-            const sidMatch = setCookieHeader.match(/SID=([^;]+)/i);
+            const sidMatch = setCookieHeader.match(/QBT_SID_\d+=([^;]+)|SID=([^;]+)/i);
             if (sidMatch) {
-              sidCookie = `SID=${sidMatch[1]}`;
-              const truncated = sidMatch[1].length > 12
-                ? sidMatch[1].substring(0, 12) + '...'
-                : sidMatch[1];
-              addEntry('COOKIE', `Session cookie captured: SID=${truncated}`, 'success');
+              const cookieValue = sidMatch[1] || sidMatch[2];
+              const cookieName = sidMatch[0].split('=')[0];
+              sidCookie = `${cookieName}=${cookieValue}`;
+              const truncated = cookieValue.length > 12
+                ? cookieValue.substring(0, 12) + '...'
+                : cookieValue;
+              addEntry('COOKIE', `Session cookie captured: ${cookieName}=${truncated}`, 'success');
               passed++;
             } else {
               addEntry('COOKIE', `set-cookie header found but no SID: "${setCookieHeader.substring(0, 80)}"`, 'warning');
@@ -382,9 +392,12 @@ export function SuperDebugPanel({
       const apiStart = Date.now();
       try {
         const headers: Record<string, string> = {};
-        if (sidCookie) {
+        if (apiKey.trim()) {
+          headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+        } else if (sidCookie) {
           headers['Cookie'] = sidCookie;
         }
+
         const apiResp = await fetch(versionUrl, {
           method: 'GET',
           headers,
@@ -399,7 +412,9 @@ export function SuperDebugPanel({
           passed++;
         } else if (apiResp.status === 403) {
           addEntry('API', `HTTP 403 Forbidden — Not authenticated (${apiLatency}ms)`, 'error');
-          if (!bypassAuth && !sidCookie) {
+          if (apiKey.trim()) {
+            addEntry('WARN', 'The API key was rejected by the server. This could mean:\n  1. The API key is incorrect\n  2. Your qBittorrent version does not support API key auth (requires 5.2.0+)\n  3. API key auth is not enabled in qBittorrent settings', 'warning');
+          } else if (!bypassAuth && !sidCookie) {
             addEntry('WARN', 'Login succeeded (Step 2) but no session cookie was captured (Step 3), so this API request was rejected.\n\nThis confirms the cookie issue. Solution:\n  1. In qBittorrent: Settings > WebUI > "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet\n  3. Enable "Bypass Authentication" toggle in qBitRemote', 'warning');
           } else if (bypassAuth) {
             addEntry('WARN', 'Auth bypass is enabled, but the server still requires authentication.\n\nIn qBittorrent: Settings > WebUI:\n  1. Enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet to the whitelist', 'warning');
@@ -466,6 +481,7 @@ export function SuperDebugPanel({
       `Port: ${portNum || 'default (80/443)'}`,
       `HTTPS: ${useHttps ? 'Yes' : 'No'}`,
       `Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`,
+      `API Key: ${useApiKey ? 'Yes' : 'No'}`,
       '',
       '--- Diagnostic Log ---',
       ...log.map((e) => `${formatTime(e.timestamp)} [${e.step}] ${e.message}`),
@@ -530,6 +546,7 @@ export function SuperDebugPanel({
         `Port: ${portNum || 'default (80/443)'}`,
         `HTTPS: ${useHttps ? 'Yes' : 'No'}`,
         `Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`,
+        `API Key: ${useApiKey ? 'Yes' : 'No'}`,
         `Username: ${username ? '(set)' : '(empty)'}`,
         '',
       ];
